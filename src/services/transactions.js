@@ -1,13 +1,15 @@
 // src/services/transactions.js
 import api from './api';
 
-// Busca paginada + filtro por descrição
-export async function getTransactions({ description = '', page = 0, size = 10 }) {
-  const res = await api.get('/transactions', {
-    params: { description, page, size },
-  });
-  return res.data; // Page<TransactionDTO>
+// Busca paginada + filtro por descrição e data
+export async function getTransactions({ description, page, size, startDate, endDate }) {
+  const params = { description, page, size };
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  const response = await api.get('/transactions', { params });
+  return response.data;
 }
+
 
 // Cria uma transação
 export async function createTransaction(payload) {

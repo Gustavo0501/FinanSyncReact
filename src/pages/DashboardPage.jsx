@@ -40,9 +40,16 @@ const DashboardPage = () => {
   const { logout } = useAuth();
 
   // Estados para filtro e paginação
-  const [description, setDescription] = useState('');
   const [page, setPage] = useState(0); // API é 0-based
   const [size, setSize] = useState(10);
+  const [description, setDescription] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const [descriptionInput, setDescriptionInput] = useState('');
+  const [startDateInput, setStartDateInput] = useState('');
+  const [endDateInput, setEndDateInput] = useState('');
+
 
   // Estados para os dados retornados da API
   const [transactions, setTransactions] = useState([]);
@@ -61,6 +68,7 @@ const DashboardPage = () => {
   const [importedTransactions, setImportedTransactions] = useState([]);
 
   const [modalOpen, setModalOpen] = useState(false);
+
 
   // Função para buscar e mostrar as transações importadas
   const handleAnalyzeImport = async () => {
@@ -94,7 +102,7 @@ const DashboardPage = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await getTransactions({ description, page, size });
+      const data = await getTransactions({ description, page, size, startDate, endDate });
       setTransactions(data.content ?? []);
       setTotalPages(data.totalPages ?? 0);
       setTotalElements(data.totalElements ?? 0);
@@ -109,7 +117,26 @@ const DashboardPage = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [description, page, size]);
+  }, [description, startDate, endDate, page, size]);
+
+  const [allTransactionsForCharts, setAllTransactionsForCharts] = useState([]);
+
+  const loadAllTransactionsForCharts = async () => {
+    try {
+      const data = await api.get('/transactions/all', {
+        params: { description, startDate, endDate }
+      });
+      setAllTransactionsForCharts(data.data ?? []);
+    } catch (e) {
+      setAllTransactionsForCharts([]);
+    }
+  };
+
+  useEffect(() => {
+    loadAllTransactionsForCharts();
+  }, [description, startDate, endDate]);
+
+
 
   // Funções de CRUD
   const handleFormSubmit = async (payload) => {
@@ -194,21 +221,32 @@ const DashboardPage = () => {
 
       {/* Ferramentas de Filtro, Paginação e Ações */}
       <TransactionToolbar
-        description={description}
-        onChangeDescription={setDescription}
+        descriptionInput={descriptionInput}
+        setDescriptionInput={setDescriptionInput}
+        startDateInput={startDateInput}
+        setStartDateInput={setStartDateInput}
+        endDateInput={endDateInput}
+        setEndDateInput={setEndDateInput}
+        onApplyFilters={() => {
+          setDescription(descriptionInput);
+          setStartDate(startDateInput);
+          setEndDate(endDateInput);
+          setPage(0);
+        }}
         page={page}
         size={size}
         totalPages={totalPages}
         onPageChange={setPage}
         onSizeChange={setSize}
         isLoading={isLoading}
-        onSyncGmail={handleSyncWithGmail} // Prop adicionada
+        onSyncGmail={handleSyncWithGmail}
       />
+
       
       {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
 
       <section style={{ marginTop: '30px', marginBottom: '30px' }}>
-        <TransactionChart transactions={transactions} />
+        <TransactionChart transactions={allTransactionsForCharts} />
       </section>
 
       {isLoading ? (
