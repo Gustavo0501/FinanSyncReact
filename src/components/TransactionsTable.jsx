@@ -20,6 +20,7 @@ const TransactionsTable = ({ items, onEdit, onDelete }) => {
           <th>Valor</th>
           <th>Data</th>
           <th>Tipo</th>
+          <th>Categoria</th>
           <th style={{ width: 160 }}>Ações</th>
         </tr>
       </thead>
@@ -35,6 +36,7 @@ const TransactionsTable = ({ items, onEdit, onDelete }) => {
             <td>{formatCurrency(tx.amount)}</td>
             <td>{(tx.transactionDate ?? '').substring(0, 10)}</td>
             <td>{tx.type}</td>
+            <td>{tx.category}</td>
             <td>
               <button onClick={() => onEdit(tx)}>Editar</button>{' '}
               <button onClick={() => onDelete(tx.id)} style={{ background: '#fdd' }}>

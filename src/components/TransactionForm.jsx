@@ -1,111 +1,38 @@
-// src/components/TransactionForm.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
-const emptyForm = {
-  description: '',
-  amount: '',
-  transactionDate: '',
-  type: 'RECEITA',
-};
+export default function TransactionForm({ initialData = {}, onSubmit, onCancel }) {
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [amount, setAmount] = useState(initialData?.amount || '');
+  const [type, setType] = useState(initialData?.type || 'RECEITA');
+  const [date, setDate] = useState(initialData?.transactionDate || '');
+  const [category, setCategory] = useState(initialData?.category || '');
 
-const TransactionForm = ({ initialData = null, onSubmit, onCancel }) => {
-  const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => {
-    if (initialData) {
-      setForm({
-        description: initialData.description ?? '',
-        amount: String(initialData.amount ?? ''),
-        transactionDate: (initialData.transactionDate ?? '').substring(0, 10),
-        type: initialData.type ?? 'RECEITA',
-      });
-    } else {
-      setForm(emptyForm);
-    }
-  }, [initialData]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = {
-      description: form.description.trim(),
-      amount: Number(form.amount),
-      transactionDate: form.transactionDate, // yyyy-mm-dd
-      type: form.type,
-    };
-    onSubmit(payload);
+    onSubmit({ description, amount, type, transactionDate: date, category});
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 420 }}>
-      <h3>{initialData ? 'Editar Transação' : 'Nova Transação'}</h3>
+    <form onSubmit={handleSubmit}>
+      <h2>{initialData?.id ? 'Editar' : 'Nova'} Transação</h2>
+      <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Descrição" required />
+      <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Valor" type="number" required />
+      <select value={type} onChange={e => setType(e.target.value)}>
+        <option value="RECEITA">Receita</option>
+        <option value="DESPESA">Despesa</option>
+      </select>
+      <input value={date} onChange={e => setDate(e.target.value)} type="date" required />
+      <input
+        value={category}
+        onChange={e => setCategory(e.target.value)}
+        placeholder="Categoria"
+        required
+      />
 
-      <div style={{ marginTop: 10 }}>
-        <label>Descrição</label><br />
-        <input
-          name="description"
-          value={form.description}
-          onChange={handleChange}
-          required
-          placeholder="Ex.: Salário, Aluguel..."
-          style={{ width: '100%', padding: 10 }}
-        />
-      </div>
-
-      <div style={{ marginTop: 10 }}>
-        <label>Valor</label><br />
-        <input
-          name="amount"
-          type="number"
-          step="0.01"
-          value={form.amount}
-          onChange={handleChange}
-          required
-          style={{ width: '100%', padding: 10 }}
-        />
-      </div>
-
-      <div style={{ marginTop: 10 }}>
-        <label>Data</label><br />
-        <input
-          name="transactionDate"
-          type="date"
-          value={form.transactionDate}
-          onChange={handleChange}
-          required
-          style={{ width: '100%', padding: 10 }}
-        />
-      </div>
-
-      <div style={{ marginTop: 10 }}>
-        <label>Tipo</label><br />
-        <select
-          name="type"
-          value={form.type}
-          onChange={handleChange}
-          style={{ width: '100%', padding: 10 }}
-        >
-          <option value="RECEITA">Receita</option>
-          <option value="DESPESA">Despesa</option>
-        </select>
-      </div>
-
-      <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-        <button type="submit">
-          {initialData ? 'Atualizar' : 'Salvar'}
-        </button>
-        {onCancel && (
-          <button type="button" onClick={onCancel} style={{ backgroundColor: '#eee' }}>
-            Cancelar
-          </button>
-        )}
-      </div>
+      <button type="submit">Salvar</button>
+      <button type="button" onClick={onCancel} style={{ marginLeft: 8 }}>Cancelar</button>
     </form>
   );
-};
-
-export default TransactionForm;
+}

@@ -8,7 +8,8 @@ const TransactionToolbar = ({
   totalPages,
   onPageChange,
   onSizeChange,
-  isLoading // Adicionado para desabilitar controles durante o carregamento
+  isLoading,
+  onSyncGmail, // Prop recebida
 }) => {
   return (
     <section style={{
@@ -32,7 +33,7 @@ const TransactionToolbar = ({
           placeholder="Ex.: Salário, Aluguel..."
           value={description}
           onChange={e => {
-            onPageChange(0); // Volta para a primeira página ao filtrar
+            onPageChange(0);
             onChangeDescription(e.target.value);
           }}
           disabled={isLoading}
@@ -49,7 +50,7 @@ const TransactionToolbar = ({
           id="size-selector"
           value={size}
           onChange={e => {
-            onPageChange(0); // Volta para a primeira página ao mudar o tamanho
+            onPageChange(0);
             onSizeChange(Number(e.target.value));
           }}
           disabled={isLoading}
@@ -59,6 +60,26 @@ const TransactionToolbar = ({
           <option value={10}>10</option>
           <option value={25}>25</option>
         </select>
+      </div>
+
+      {/* NOVO BOTÃO: Sincronizar com Gmail */}
+      <div>
+        <button
+          onClick={onSyncGmail}
+          disabled={isLoading}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '4px',
+            border: 'none',
+            backgroundColor: isLoading ? '#e2e8f0' : '#facc15', // Cor amarela, desabilitado cinza
+            color: '#1f2937',
+            fontWeight: 'bold',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            transition: 'background-color 0.2s',
+          }}
+        >
+          Sincronizar com Gmail
+        </button>
       </div>
 
       {/* Controles de Paginação */}
