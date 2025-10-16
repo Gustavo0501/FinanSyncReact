@@ -1,126 +1,111 @@
 import React from 'react';
 
 const TransactionToolbar = ({
-  descriptionInput,
-  setDescriptionInput,
-  startDateInput,
-  setStartDateInput,
-  endDateInput,
-  setEndDateInput,
   onApplyFilters,
-  page,
-  size,
-  totalPages,
-  onPageChange,
-  onSizeChange,
+  onAddTransaction,
+  onSyncGmail,
+  onAnalyzeImport,
   isLoading,
-  onSyncGmail
-}) => (
-  <section style={{
-    marginTop: '16px',
-    padding: '16px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    backgroundColor: '#f8fafc',
-    display: 'flex',
-    gap: '16px',
-    alignItems: 'center',
-    flexWrap: 'wrap'
-  }}>
-    {/* Campo de Filtro por Descrição */}
-    <div>
-      <label htmlFor="description-filter" style={{ marginRight: '8px', fontWeight: 'bold' }}>
-        Filtrar por descrição:
-      </label>
-      <input
-        id="description-filter"
-        placeholder="Ex.: Salário, Aluguel..."
-        value={descriptionInput}
-        onChange={e => setDescriptionInput(e.target.value)}
-        disabled={isLoading}
-        style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e0' }}
-      />
-    </div>
+}) => {
+  const [description, setDescription] = React.useState('');
+  const [startDate, setStartDate] = React.useState('');
+  const [endDate, setEndDate] = React.useState('');
 
-    {/* Filtros de Data */}
-    <div style={{ marginBottom: 16 }}>
-      <label>
-        Início:
-        <input type="date" value={startDateInput} onChange={e => setStartDateInput(e.target.value)} />
-      </label>
-      <label style={{ marginLeft: 8 }}>
-        Fim:
-        <input type="date" value={endDateInput} onChange={e => setEndDateInput(e.target.value)} />
-      </label>
-      <button
-        onClick={onApplyFilters}
-        style={{ marginLeft: 8 }}
-        disabled={isLoading}
-      >
-        Filtrar
-      </button>
-    </div>
+  const handleFilter = () => {
+    onApplyFilters({ description, startDate, endDate });
+  };
+  
+  const handleClearFilters = () => {
+    setDescription('');
+    setStartDate('');
+    setEndDate('');
+    onApplyFilters({ description: '', startDate: '', endDate: '' });
+  };
 
-    {/* Seletor de Tamanho da Página */}
-    <div>
-      <label htmlFor="size-selector" style={{ marginRight: '8px', fontWeight: 'bold' }}>
-        Itens por página:
-      </label>
-      <select
-        id="size-selector"
-        value={size}
-        onChange={e => {
-          onPageChange(0);
-          onSizeChange(Number(e.target.value));
-        }}
-        disabled={isLoading}
-        style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e0' }}
-      >
-        <option value={5}>5</option>
-        <option value={10}>10</option>
-        <option value={25}>25</option>
-      </select>
-    </div>
+  return (
+    <div className="flex flex-col space-y-4">
+      {/* Linha 1: Filtros */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-text-secondary">Descrição</label>
+          <input
+            id="description"
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ex: Conta de luz, Salário"
+            disabled={isLoading}
+            className="mt-1 w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary transition"
+          />
+        </div>
+        <div>
+          <label htmlFor="startDate" className="block text-sm font-medium text-text-secondary">Data de Início</label>
+          <input
+            id="startDate"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            disabled={isLoading}
+            className="mt-1 w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary transition"
+          />
+        </div>
+        <div>
+          <label htmlFor="endDate" className="block text-sm font-medium text-text-secondary">Data de Fim</label>
+          <input
+            id="endDate"
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            disabled={isLoading}
+            className="mt-1 w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary transition"
+          />
+        </div>
+      </div>
 
-    {/* Botão de Sincronizar com Gmail */}
-    <div>
-      <button
-        onClick={onSyncGmail}
-        disabled={isLoading}
-        style={{
-          padding: '8px 16px',
-          borderRadius: '4px',
-          border: 'none',
-          backgroundColor: isLoading ? '#e2e8f0' : '#facc15',
-          color: '#1f2937',
-          fontWeight: 'bold',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-          transition: 'background-color 0.2s',
-        }}
-      >
-        Sincronizar com Gmail
-      </button>
+      {/* Linha 2: Botões de Ação */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+            <button
+                onClick={handleFilter}
+                disabled={isLoading}
+                className="px-4 py-2 bg-brand-primary text-white font-semibold rounded-md shadow-sm hover:bg-brand-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary disabled:bg-gray-400 transition-colors"
+            >
+                Filtrar
+            </button>
+            <button
+                onClick={handleClearFilters}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gray-200 text-text-secondary font-semibold rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:bg-gray-400 transition-colors"
+            >
+                Limpar
+            </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+            <button
+                onClick={onAddTransaction}
+                disabled={isLoading}
+                className="px-4 py-2 bg-status-success text-white font-semibold rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 transition-colors"
+            >
+                + Nova Transação
+            </button>
+            <button
+                onClick={onAnalyzeImport}
+                disabled={isLoading}
+                className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-md shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:bg-gray-400 transition-colors"
+            >
+                Importar do Gmail
+            </button>
+            <button
+                onClick={onSyncGmail}
+                disabled={isLoading}
+                className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 transition-colors"
+            >
+                Sincronizar Conta
+            </button>
+        </div>
+      </div>
     </div>
-
-    {/* Controles de Paginação */}
-    <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-      <button
-        disabled={page <= 0 || isLoading}
-        onClick={() => onPageChange(page - 1)}
-      >
-        Anterior
-      </button>
-      <span style={{ fontWeight: 'bold', minWidth: '100px', textAlign: 'center' }}>
-        {`Página ${page + 1} de ${Math.max(totalPages, 1)}`}
-      </span>
-      <button
-        disabled={page >= totalPages - 1 || isLoading}
-        onClick={() => onPageChange(page + 1)}
-      >
-        Próxima
-      </button>
-    </div>
-  </section>
-);
+  );
+};
 
 export default TransactionToolbar;

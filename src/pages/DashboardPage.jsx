@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
-import TransactionImportModal from '../components/TransactionImportModal';
-import Modal from '../components/Modal';
-
+import { toast } from 'react-toastify';
 
 // Serviços e Notificações
 import {
@@ -13,132 +11,101 @@ import {
   deleteTransaction,
 } from '../services/transactions';
 import { notifySuccess, notifyError } from '../ToastProvider';
-import { toast } from 'react-toastify'; // Importado para notificações do fluxo do Gmail
-import api from '../services/api'; // Importado para chamar o endpoint de autorização
+import api from '../services/api';
 
 // Componentes da UI
 import TransactionForm from '../components/TransactionForm';
 import TransactionsTable from '../components/TransactionsTable';
 import TransactionToolbar from '../components/TransactionToolbar';
 import TransactionChart from '../components/TransactionChart';
+import Modal from '../components/Modal';
+import TransactionImportModal from '../components/TransactionImportModal';
 
 const DashboardPage = () => {
-  const [searchParams] = useSearchParams();
-  const gmailStatus = searchParams.get('gmail'); // 'connected', 'error', etc.
-
-  useEffect(() => {
-    if (gmailStatus === 'connected') {
-      // Exiba um toast, recarregue transações, etc.
-      notifySuccess('Gmail conectado com sucesso!');
-      // Opcional: Limpe o parâmetro da URL após mostrar a mensagem
-    }
-    if (gmailStatus === 'error') {
-      notifyError('Erro ao conectar com o Gmail.');
-    }
-  }, [gmailStatus]);
-  
+  const [searchParams, setSearchParams] = useSearchParams();
   const { logout } = useAuth();
+  
+  // Efeito para notificações do fluxo do Gmail
+  useEffect(() => {
+    const gmailStatus = searchParams.get('gmail');
+    if (gmailStatus === 'connected') {
+      notifySuccess('Gmail conectado com sucesso!');
+      // Limpa o parâmetro da URL para não mostrar a mensagem novamente ao recarregar
+      searchParams.delete('gmail');
+      setSearchParams(searchParams);
+    } else if (gmailStatus === 'error') {
+      notifyError('Erro ao conectar com o Gmail.');
+      searchParams.delete('gmail');
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams]);
 
+  // --- ESTADOS DO COMPONENTE ---
+  
   // Estados para filtro e paginação
+  const [filters, setFilters] = useState({ description: '', startDate: '', endDate: '' });
   const [page, setPage] = useState(0); // API é 0-based
   const [size, setSize] = useState(10);
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  const [descriptionInput, setDescriptionInput] = useState('');
-  const [startDateInput, setStartDateInput] = useState('');
-  const [endDateInput, setEndDateInput] = useState('');
-
-
-  // Estados para os dados retornados da API
+  
+  // Estados para os dados da API
   const [transactions, setTransactions] = useState([]);
+  const [allTransactionsForCharts, setAllTransactionsForCharts] = useState([]);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Estados para controle da UI (loading, erros, etc.)
+  // Estados para controle da UI
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
-
-  // Estado para controlar o modo de edição
+  
+  // Estados para controle de modais e edição
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
-
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedTransactions, setImportedTransactions] = useState([]);
+  
+  // --- CARREGAMENTO DE DADOS ---
 
-  const [modalOpen, setModalOpen] = useState(false);
-
-
-  // Função para buscar e mostrar as transações importadas
-  const handleAnalyzeImport = async () => {
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      // Ajuste os parâmetros conforme seu backend
-      const remetente = 'no-reply@inter.co';
-      const assunto = 'Seu extrato está disponível';
-      const result = await api.get('/transactions/import/analyze', { params: { remetente, assunto } });
-      console.log('Transações importadas:', result.data);
-      setImportedTransactions(result.data);
-      setShowImportModal(true);
-    } catch (err) {
-      notifyError('Erro ao buscar transações para importação.');
-    }
-  };
-
-  // Função para confirmar importação
-  const handleConfirmImport = async (transacoesSelecionadas) => {
-    try {
-      await api.post('/transactions/import/confirm', transacoesSelecionadas);
-      notifySuccess('Importação realizada com sucesso!');
-      setShowImportModal(false);
-      await loadData();
-    } catch (error) {
-      notifyError('Erro ao importar transações.');
-    }
-  };
-
-  // Carrega os dados da API sempre que o filtro ou a página mudar
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await getTransactions({ description, page, size, startDate, endDate });
+      const data = await getTransactions({ ...filters, page, size });
       setTransactions(data.content ?? []);
       setTotalPages(data.totalPages ?? 0);
       setTotalElements(data.totalElements ?? 0);
     } catch (e) {
-      setError('Erro ao carregar as transações. Tente atualizar a página.');
+      setError('Erro ao carregar as transações.');
       notifyError('Erro ao carregar as transações.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filters, page, size]);
+
+  const loadAllTransactionsForCharts = useCallback(async () => {
+    try {
+      const response = await api.get('/transactions/all', { params: filters });
+      setAllTransactionsForCharts(response.data ?? []);
+    } catch (e) {
+      console.error("Erro ao carregar dados para os gráficos:", e);
+      setAllTransactionsForCharts([]);
+    }
+  }, [filters]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [description, startDate, endDate, page, size]);
-
-  const [allTransactionsForCharts, setAllTransactionsForCharts] = useState([]);
-
-  const loadAllTransactionsForCharts = async () => {
-    try {
-      const data = await api.get('/transactions/all', {
-        params: { description, startDate, endDate }
-      });
-      setAllTransactionsForCharts(data.data ?? []);
-    } catch (e) {
-      setAllTransactionsForCharts([]);
-    }
-  };
-
-  useEffect(() => {
     loadAllTransactionsForCharts();
-  }, [description, startDate, endDate]);
+  }, [loadData, loadAllTransactionsForCharts]);
 
+  // --- HANDLERS DE AÇÕES ---
 
+  const handleFilterApply = (newFilters) => {
+    setPage(0); // Reseta a paginação ao aplicar um novo filtro
+    setFilters(newFilters);
+  };
+  
+// Em DashboardPage.jsx
 
-  // Funções de CRUD
   const handleFormSubmit = async (payload) => {
     setIsSaving(true);
     try {
@@ -148,10 +115,11 @@ const DashboardPage = () => {
       } else {
         await createTransaction(payload);
         notifySuccess('Transação criada com sucesso!');
-        setPage(0);
       }
+      setModalOpen(false); // <-- ADICIONE ESTA LINHA!
       setEditingTransaction(null);
       await loadData();
+      await loadAllTransactionsForCharts();
     } catch (err) {
       notifyError(editingTransaction ? 'Erro ao atualizar transação.' : 'Erro ao criar transação.');
     } finally {
@@ -159,123 +127,190 @@ const DashboardPage = () => {
     }
   };
 
+
   const handleDelete = async (id) => {
-    if (!window.confirm('Tem certeza de que deseja excluir esta transação?')) {
-      return;
-    }
+    if (!window.confirm('Tem certeza de que deseja excluir esta transação?')) return;
     try {
       await deleteTransaction(id);
       notifySuccess('Transação excluída com sucesso!');
+      // Se era o último item de uma página, volta para a anterior
       if (transactions.length === 1 && page > 0) {
         setPage(p => p - 1);
       } else {
         await loadData();
       }
+      await loadAllTransactionsForCharts();
     } catch (err) {
       notifyError('Erro ao excluir transação.');
     }
   };
+  
+  const handleOpenModalForEdit = (transaction) => {
+    setEditingTransaction(transaction);
+    setModalOpen(true);
+  };
 
-  // NOVA FUNÇÃO: INICIAR O FLUXO DE AUTORIZAÇÃO DO GMAIL
+  const handleOpenModalForCreate = () => {
+    setEditingTransaction(null);
+    setModalOpen(true);
+  };
+
   const handleSyncWithGmail = async () => {
     try {
       toast.info('Redirecionando para o Google para autorização...');
-      const url = await api.get('/gmail/authorize-url').then(r => r.data);
+      const response = await api.get('/gmail/authorize-url');
+      const url = response.data;
       if (url && url.startsWith('http')) {
         window.location.assign(url);
       } else {
         toast.error('Não foi possível obter a URL de autorização.');
       }
-
     } catch (error) {
-      toast.error('Falha ao conectar com o Gmail. Tente novamente.');
-      console.error('Erro ao iniciar a sincronização com o Gmail:', error);
+      toast.error('Falha ao iniciar a conexão com o Gmail.');
+      console.error('Erro ao sincronizar com o Gmail:', error);
     }
   };
 
+  const handleAnalyzeImport = async () => {
+    try {
+      const remetente = 'no-reply@inter.co';
+      const assunto = 'Seu extrato está disponível';
+      const result = await api.get('/transactions/import/analyze', { params: { remetente, assunto } });
+      setImportedTransactions(result.data || []);
+      setShowImportModal(true);
+    } catch (err) {
+      notifyError('Erro ao buscar transações do e-mail.');
+    }
+  };
+
+  const handleConfirmImport = async (selectedTransactions) => {
+    try {
+      await api.post('/transactions/import/confirm', selectedTransactions);
+      notifySuccess('Transações importadas com sucesso!');
+      setShowImportModal(false);
+      await loadData();
+      await loadAllTransactionsForCharts();
+    } catch (error) {
+      notifyError('Erro ao confirmar a importação.');
+    }
+  };
+
+  // Para o model
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingTransaction(null); // Limpa a transação em edição
+  };
+
+
+  // --- RENDERIZAÇÃO ---
+  
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h1>Dashboard</h1>
-        <button onClick={logout}>Sair</button>
-      </header>
+    <div className="min-h-screen bg-background-primary p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Cabeçalho */}
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-text-primary">Painel de Controle</h1>
+            <p className="text-text-secondary mt-1">Sua visão financeira completa.</p>
+          </div>
+          <button
+            onClick={logout}
+            className="mt-4 sm:mt-0 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-sm hover:bg-status-danger transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Sair
+          </button>
+        </header>
 
-      <div style={{ marginBottom: '16px' }}>
-        <button onClick={() => { setEditingTransaction(null); setModalOpen(true); }}>
-          Criar nova transação
-        </button>
-      </div>
+        {/* Barra de Ferramentas e Ações */}
+        <div className="bg-background-secondary p-4 sm:p-6 rounded-lg shadow-md mb-8">
+          <TransactionToolbar
+            onApplyFilters={handleFilterApply}
+            onAddTransaction={handleOpenModalForCreate}
+            onSyncGmail={handleSyncWithGmail}
+            onAnalyzeImport={handleAnalyzeImport}
+            isLoading={isLoading}
+          />
+        </div>
+        
+        {error && (
+            <div className="bg-red-100 border-l-4 border-status-danger text-red-700 p-4 mb-8 rounded-md" role="alert">
+                <p className="font-bold">Ocorreu um erro</p>
+                <p>{error}</p>
+            </div>
+        )}
 
-      {/* Botão de importação - aqui é seguro */}
-      <div style={{ marginBottom: '16px' }}>
-        <button onClick={handleAnalyzeImport}>Atualizar Transações (Importar Gmail)</button>
-      </div>
+        {/* Tabela de Transações */}
+        <div className="bg-background-secondary rounded-lg shadow-md mb-8">
+          <div className="p-4 sm:p-6">
+              <h2 className="text-xl font-display font-semibold text-text-primary">Histórico de Transações</h2>
+              <p className="text-sm text-text-secondary mt-1">Total de registros: {totalElements}</p>
+          </div>
+          {isLoading ? (
+            <div className="text-center p-10">
+              <p className="text-text-secondary">Carregando transações...</p>
+            </div>
+          ) : (
+            <TransactionsTable
+              items={transactions}
+              onEdit={handleOpenModalForEdit}
+              onDelete={handleDelete}
+            />
+          )}
+          {/* Controles de Paginação */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center p-4 border-t border-gray-200">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-4 py-2 bg-brand-primary text-white rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-brand-primary-hover transition-colors"
+              >
+                Anterior
+              </button>
+              <span className="text-text-secondary text-sm">
+                Página {page + 1} de {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="px-4 py-2 bg-brand-primary text-white rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-brand-primary-hover transition-colors"
+              >
+                Próxima
+              </button>
+            </div>
+          )}
+        </div>
 
-      <TransactionImportModal
-        open={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        transactions={importedTransactions || []}
-        onConfirm={handleConfirmImport}
-      />
+        {/* Seção de Gráficos */}
+        <section className="mb-8">
+          <TransactionChart transactions={allTransactionsForCharts} />
+        </section>
+
+        {/* Modal para Adicionar/Editar Transação */}
+        <Modal open={modalOpen} onClose={handleCloseModal}>
+          <TransactionForm
+            key={editingTransaction ? editingTransaction.id : 'new-transaction'}
+            initialData={editingTransaction}
+            // Modifique o onSubmit para fechar o modal
+            onSubmit={async (payload) => {
+              await handleFormSubmit(payload);
+              // Embora já tenhamos adicionado no handler, uma garantia extra aqui
+              setModalOpen(false); 
+            }}
+            onCancel={handleCloseModal}
+            isSaving={isSaving}
+          />
+        </Modal>
 
 
-      {/* Ferramentas de Filtro, Paginação e Ações */}
-      <TransactionToolbar
-        descriptionInput={descriptionInput}
-        setDescriptionInput={setDescriptionInput}
-        startDateInput={startDateInput}
-        setStartDateInput={setStartDateInput}
-        endDateInput={endDateInput}
-        setEndDateInput={setEndDateInput}
-        onApplyFilters={() => {
-          setDescription(descriptionInput);
-          setStartDate(startDateInput);
-          setEndDate(endDateInput);
-          setPage(0);
-        }}
-        page={page}
-        size={size}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        onSizeChange={setSize}
-        isLoading={isLoading}
-        onSyncGmail={handleSyncWithGmail}
-      />
-
-      
-      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
-
-      <section style={{ marginTop: '30px', marginBottom: '30px' }}>
-        <TransactionChart transactions={allTransactionsForCharts} />
-      </section>
-
-      {isLoading ? (
-        <p>Carregando transações...</p>
-      ) : (
-        <TransactionsTable
-          items={transactions}
-          onEdit={transaction => { setEditingTransaction(transaction); setModalOpen(true); }}
-          onDelete={handleDelete}
+        {/* Modal para Importação do Gmail */}
+        <TransactionImportModal
+          open={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          transactions={importedTransactions}
+          onConfirm={handleConfirmImport}
         />
-      )}
-      <p style={{ marginTop: '8px', fontSize: '14px', color: '#555' }}>
-        Total de registros: {totalElements}
-      </p>
-
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <TransactionForm
-          key={editingTransaction ? editingTransaction.id : 'new'}
-          initialData={editingTransaction}
-          onSubmit={async (payload) => {
-            await handleFormSubmit(payload);
-            setModalOpen(false);
-          }}
-          onCancel={() => setModalOpen(false)}
-        />
-        {isSaving && <p style={{ marginTop: '10px' }}>Salvando...</p>}
-      </Modal>
-
-      
+      </div>
     </div>
   );
 };

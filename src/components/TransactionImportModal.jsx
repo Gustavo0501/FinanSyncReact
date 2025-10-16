@@ -1,77 +1,90 @@
 import React, { useState, useEffect } from 'react';
+import Modal from './Modal'; // Usando o componente Modal genérico como base
 
-const modalStyle = {
-  position: 'fixed',
-  top: 0, left: 0, right: 0, bottom: 0,
-  background: 'rgba(0,0,0,0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 1000
-};
-
-const contentStyle = {
-  background: '#fff',
-  padding: 24,
-  borderRadius: 8,
-  minWidth: 400,
-  maxHeight: '80vh',
-  overflowY: 'auto'
-};
-
-export default function TransactionImportModal({ open, onClose, transactions, onConfirm }) {
-  const [edited, setEdited] = useState(transactions || []);
+const TransactionImportModal = ({ open, onClose, transactions, onConfirm }) => {
+  const [editedTransactions, setEditedTransactions] = useState([]);
 
   useEffect(() => {
+    // Garante que o estado seja atualizado quando as props mudarem
     if (Array.isArray(transactions)) {
-      setEdited(transactions);
+      setEditedTransactions(transactions);
     }
   }, [transactions]);
 
-  const handleCategoryChange = (idx, value) => {
-    const updated = [...edited];
-    updated[idx] = { ...updated[idx], category: value };
-    setEdited(updated);
+  const handleCategoryChange = (index, value) => {
+    const updated = [...editedTransactions];
+    updated[index] = { ...updated[index], category: value };
+    setEditedTransactions(updated);
   };
 
-  if (!open) return null;
+  const formatCurrency = (value) => {
+    const number = typeof value === 'number' ? value : Number(value);
+    if (isNaN(number)) return 'R$ 0,00';
+    return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Data inválida';
+    return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  };
 
   return (
-    <div style={modalStyle}>
-      <div style={contentStyle}>
-        <h2>Confirme as transações importadas</h2>
-        <table style={{ width: '100%', marginBottom: 16 }}>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Valor</th>
-              <th>Tipo</th>
-              <th>Descrição</th>
-              <th>Categoria</th>
-            </tr>
-          </thead>
-          <tbody>
-            {edited.map((t, idx) => (
-              <tr key={idx}>
-                <td>{t.transactionDate}</td>
-                <td>{t.amount}</td>
-                <td>{t.type}</td>
-                <td>{t.description}</td>
-                <td>
-                  <input
-                    type="text"
-                    value={t.category || ''}
-                    onChange={e => handleCategoryChange(idx, e.target.value)}
-                    placeholder="Categoria"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <button onClick={() => onConfirm(edited)}>Confirmar Importação</button>
-        <button onClick={onClose} style={{ marginLeft: 8 }}>Cancelar</button>
+    <Modal open={open} onClose={onClose}>
+      <div className="w-full max-w-4xl">
+        <h2 className="text-2xl font-display font-bold mb-6 text-text-primary">Confirmar Transações Importadas</h2>
+        
+        <div className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Data</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Valor</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tipo</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Descrição</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Categoria</th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                {editedTransactions.map((t, idx) => (
+                    <tr key={idx}>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-text-secondary">{formatDate(t.date || t.transactionDate)}</td>
+                        <td className={`px-4 py-2 whitespace-nowrap text-sm font-semibold ${t.type === 'RECEITA' ? 'text-status-success' : 'text-status-danger'}`}>
+                            {formatCurrency(t.amount)}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-text-primary">{t.type}</td>
+                        <td className="px-4 py-2 text-sm text-text-primary">{t.description}</td>
+                        <td className="px-4 py-2">
+                            <input
+                                type="text"
+                                value={t.category || ''}
+                                onChange={e => handleCategoryChange(idx, e.target.value)}
+                                placeholder="Definir categoria"
+                                className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                            />
+                        </td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
+        </div>
+
+        <div className="flex justify-end gap-4 mt-6">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 text-text-secondary font-semibold rounded-md hover:bg-gray-300 transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirm(editedTransactions)}
+            className="px-4 py-2 bg-brand-primary text-white font-semibold rounded-md hover:bg-brand-primary-hover transition"
+          >
+            Confirmar Importação
+          </button>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
+export default TransactionImportModal;
